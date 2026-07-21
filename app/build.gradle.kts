@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.mediacontrol"
+    namespace = "com.dinopig.mediacontrol"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.mediacontrol"
+        applicationId = "com.dinopig.mediacontrol"
         minSdk = 26
         targetSdk = 34
         versionCode = 1
