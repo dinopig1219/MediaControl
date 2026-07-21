@@ -4,10 +4,12 @@ import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.media.MediaMetadata
-import android.media.Rating
 import android.media.session.MediaSessionManager
-import android.media.session.PlaybackState
+import android.support.v4.media.MediaMetadataCompat
+import android.support.v4.media.RatingCompat
+import android.support.v4.media.session.MediaControllerCompat
+import android.support.v4.media.session.MediaSessionCompat
+import android.support.v4.media.session.PlaybackStateCompat
 
 class MediaActionReceiver : BroadcastReceiver() {
 
@@ -27,14 +29,16 @@ class MediaActionReceiver : BroadcastReceiver() {
         val manager = context.getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
         val component = ComponentName(context, MediaControlListenerService::class.java)
 
-        val controller = try {
+        val frameworkController = try {
             manager.getActiveSessions(component)
                 .firstOrNull { it.packageName in MediaControlListenerService.TARGET_PACKAGES }
         } catch (e: SecurityException) {
             null
         } ?: return
 
+        val controller = MediaControllerCompat(context, MediaSessionCompat.Token.fromToken(frameworkController.sessionToken))
         val transport = controller.transportControls
+
         when (intent.action) {
             ACTION_PLAY -> transport.play()
             ACTION_PAUSE -> transport.pause()
@@ -43,29 +47,29 @@ class MediaActionReceiver : BroadcastReceiver() {
 
             ACTION_TOGGLE_REPEAT -> {
                 val next = when (controller.repeatMode) {
-                    PlaybackState.REPEAT_MODE_NONE -> PlaybackState.REPEAT_MODE_ALL
-                    PlaybackState.REPEAT_MODE_ALL, PlaybackState.REPEAT_MODE_GROUP -> PlaybackState.REPEAT_MODE_ONE
-                    else -> PlaybackState.REPEAT_MODE_NONE
+                    PlaybackStateCompat.REPEAT_MODE_NONE -> PlaybackStateCompat.REPEAT_MODE_ALL
+                    PlaybackStateCompat.REPEAT_MODE_ALL, PlaybackStateCompat.REPEAT_MODE_GROUP -> PlaybackStateCompat.REPEAT_MODE_ONE
+                    else -> PlaybackStateCompat.REPEAT_MODE_NONE
                 }
                 transport.setRepeatMode(next)
             }
 
             ACTION_TOGGLE_SHUFFLE -> {
-                val next = if (controller.shuffleMode == PlaybackState.SHUFFLE_MODE_NONE)
-                    PlaybackState.SHUFFLE_MODE_ALL else PlaybackState.SHUFFLE_MODE_NONE
+                val next = if (controller.shuffleMode == PlaybackStateCompat.SHUFFLE_MODE_NONE)
+                    PlaybackStateCompat.SHUFFLE_MODE_ALL else PlaybackStateCompat.SHUFFLE_MODE_NONE
                 transport.setShuffleMode(next)
             }
 
             ACTION_TOGGLE_LIKE -> {
-                val current = controller.metadata?.getRating(MediaMetadata.METADATA_KEY_USER_RATING)
+                val current = controller.metadata?.getRating(MediaMetadataCompat.METADATA_KEY_USER_RATING)
                 when (controller.ratingType) {
-                    Rating.RATING_HEART -> {
+                    RatingCompat.RATING_HEART -> {
                         val loved = current?.hasHeart() == true
-                        transport.setRating(Rating.newHeartRating(!loved))
+                        transport.setRating(RatingCompat.newHeartRating(!loved))
                     }
-                    Rating.RATING_THUMB_UP_DOWN -> {
+                    RatingCompat.RATING_THUMB_UP_DOWN -> {
                         val up = current?.isRated == true && current.isThumbUp
-                        transport.setRating(Rating.newThumbRating(!up))
+                        transport.setRating(RatingCompat.newThumbRating(!up))
                     }
                     else -> { /* 不支持评分类型，忽略 */ }
                 }
