@@ -1,4 +1,4 @@
-package com.example.mediacontrol
+package com.dinopig.mediacontrol
 
 import android.content.BroadcastReceiver
 import android.content.ComponentName
