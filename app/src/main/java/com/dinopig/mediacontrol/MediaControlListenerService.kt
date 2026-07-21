@@ -7,6 +7,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.media.MediaMetadata
+import android.media.Rating
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
@@ -21,8 +22,6 @@ class MediaControlListenerService : NotificationListenerService() {
     companion object {
         const val CHANNEL_ID = "media_control_patch"
         const val NOTIFICATION_ID = 9001
-
-        // 要监听哪些 App 的媒体会话。要支持别的 App（网易云/QQ音乐等）就把包名加进来。
         val TARGET_PACKAGES = setOf("com.spotify.music")
     }
 
@@ -54,7 +53,6 @@ class MediaControlListenerService : NotificationListenerService() {
             mediaSessionManager.addOnActiveSessionsChangedListener(sessionsChangedListener, component)
             pickController(mediaSessionManager.getActiveSessions(component))
         } catch (e: SecurityException) {
-            // 理论上走不到这里：能触发 onListenerConnected 说明权限已经给了
         }
     }
 
@@ -63,7 +61,6 @@ class MediaControlListenerService : NotificationListenerService() {
         mediaSessionManager.removeOnActiveSessionsChangedListener(sessionsChangedListener)
     }
 
-    // NotificationListenerService 强制要求实现，这里用不到通知内容本身
     override fun onNotificationPosted(sbn: StatusBarNotification?) {}
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {}
 
@@ -86,6 +83,7 @@ class MediaControlListenerService : NotificationListenerService() {
 
         val metadata = controller.metadata
         val isPlaying = state.state == PlaybackState.STATE_PLAYING
+        val actionsBitmask = state.actions
 
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_media_play)
@@ -98,6 +96,7 @@ class MediaControlListenerService : NotificationListenerService() {
 
         metadata?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)?.let { builder.setLargeIcon(it) }
 
+        // 标准三键
         builder.addAction(standardAction(android.R.drawable.ic_media_previous, "上一首", MediaActionReceiver.ACTION_SKIP_PREV))
         builder.addAction(
             if (isPlaying) standardAction(android.R.drawable.ic_media_pause, "暂停", MediaActionReceiver.ACTION_PAUSE)
@@ -105,14 +104,49 @@ class MediaControlListenerService : NotificationListenerService() {
         )
         builder.addAction(standardAction(android.R.drawable.ic_media_next, "下一首", MediaActionReceiver.ACTION_SKIP_NEXT))
 
-        // 这里就是被 HyperOS 吃掉的按钮：repeat / like 等，通过 PlaybackState 的 custom actions 拿回来
+        // 循环：Spotify 是走 ACTION_SET_REPEAT_MODE，不是 custom action
+        if (actionsBitmask and PlaybackState.ACTION_SET_REPEAT_MODE != 0L) {
+            val label = when (controller.repeatMode) {
+                PlaybackState.REPEAT_MODE_ONE -> "循环: 单曲"
+                PlaybackState.REPEAT_MODE_ALL, PlaybackState.REPEAT_MODE_GROUP -> "循环: 全部"
+                else -> "循环: 关闭"
+            }
+            builder.addAction(standardAction(android.R.drawable.ic_popup_sync, label, MediaActionReceiver.ACTION_TOGGLE_REPEAT))
+        }
+
+        // 随机播放
+        if (actionsBitmask and PlaybackState.ACTION_SET_SHUFFLE_MODE != 0L) {
+            val shuffleOn = controller.shuffleMode != PlaybackState.SHUFFLE_MODE_NONE
+            builder.addAction(
+                standardAction(
+                    android.R.drawable.ic_popup_sync,
+                    if (shuffleOn) "随机: 开" else "随机: 关",
+                    MediaActionReceiver.ACTION_TOGGLE_SHUFFLE
+                )
+            )
+        }
+
+        // like：Spotify 走 ACTION_SET_RATING + Rating 对象，不是 custom action
+        if (actionsBitmask and PlaybackState.ACTION_SET_RATING != 0L) {
+            val currentRating = metadata?.getRating(MediaMetadata.METADATA_KEY_USER_RATING)
+            val loved = when (controller.ratingType) {
+                Rating.RATING_HEART -> currentRating?.hasHeart() == true
+                Rating.RATING_THUMB_UP_DOWN -> currentRating?.isRated == true && currentRating.isThumbUp
+                else -> false
+            }
+            builder.addAction(
+                standardAction(
+                    if (loved) android.R.drawable.btn_star_big_on else android.R.drawable.btn_star_big_off,
+                    if (loved) "已喜欢" else "喜欢",
+                    MediaActionReceiver.ACTION_TOGGLE_LIKE
+                )
+            )
+        }
+
+        // 保留：以防其它 App 是走 custom actions 这条路
         state.customActions?.forEach { builder.addAction(customAction(it)) }
 
-        val compactIndices = listOf(0, 1, 2).let { base ->
-            if (state.customActions?.isNotEmpty() == true) base + 3 else base
-        }.take(3).toIntArray()
-
-        builder.setStyle(MediaStyle().setShowActionsInCompactView(*compactIndices))
+        builder.setStyle(MediaStyle().setShowActionsInCompactView(0, 1, 2))
 
         getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, builder.build())
     }
