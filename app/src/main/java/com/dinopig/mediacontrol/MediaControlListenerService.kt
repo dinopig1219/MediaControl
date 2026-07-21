@@ -124,24 +124,22 @@ class MediaControlListenerService : NotificationListenerService() {
 
     private fun showDebugNotification(state: PlaybackStateCompat, controller: MediaControllerCompat) {
         val sb = StringBuilder()
+        sb.append("更新时间: ${java.text.SimpleDateFormat("HH:mm:ss").format(java.util.Date())}\n\n")
+        sb.append("包名: $activePackageName\n")
         sb.append("actions bitmask: ${state.actions}\n")
         sb.append("customActions:\n")
         if (state.customActions.isNullOrEmpty()) {
             sb.append("  (无)\n")
         } else {
             state.customActions.forEach {
-                sb.append("  name=${it.name} action=${it.action} icon=${it.icon}\n")
+                sb.append("  name=${it.name}\n  action=${it.action}\n  icon=${it.icon}\n\n")
             }
         }
 
-        val debugBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle("调试信息（点开看完整）")
-            .setStyle(NotificationCompat.BigTextStyle().bigText(sb.toString()))
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setOnlyAlertOnce(true)
-
-        getSystemService(NotificationManager::class.java).notify(DEBUG_NOTIFICATION_ID, debugBuilder.build())
+        getSharedPreferences("debug_info", Context.MODE_PRIVATE)
+            .edit()
+            .putString("last_debug_info", sb.toString())
+            .apply()
     }
 
     private fun standardAction(icon: Int, title: String, action: String): NotificationCompat.Action {
