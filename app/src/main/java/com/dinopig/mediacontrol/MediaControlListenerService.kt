@@ -1,4 +1,4 @@
-package com.example.mediacontrol
+package com.dinopig.mediacontrol
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
