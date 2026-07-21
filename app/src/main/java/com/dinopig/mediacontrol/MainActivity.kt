@@ -1,6 +1,7 @@
 package com.dinopig.mediacontrol
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -9,6 +10,7 @@ import android.provider.Settings
 import android.view.Gravity
 import android.widget.Button
 import android.widget.LinearLayout
+import android.widget.Switch
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -37,10 +39,10 @@ class MainActivity : AppCompatActivity() {
         }
 
         val infoText = TextView(this).apply {
-            text = "第 1 步：授予「通知权限」（安卓 13 及以上必须要有，否则系统会直接吞掉通知）\n\n" +
+            text = "第 1 步：授予「通知权限」\n\n" +
                 "第 2 步：授予「通知使用权」\n\n" +
                 "授权后，本 App 会读取 Spotify 当前的播放状态，" +
-                "并在通知栏里重新生成一条带完整按钮（包含 repeat / like）的通知。\n\n" +
+                "并在通知栏里重新生成一条带完整按钮的通知。\n\n" +
                 "第 3 步：把本 App 加入省电策略白名单 / 允许自启动，" +
                 "否则 HyperOS 可能会在后台把它杀掉。"
             textSize = 15f
@@ -64,8 +66,22 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        val prefs = getSharedPreferences("debug_info", Context.MODE_PRIVATE)
+
+        val debugSwitchLabel = TextView(this).apply {
+            text = "\n显示调试通知（默认关闭，开启后通知栏会多一条调试信息）"
+            textSize = 13f
+        }
+
+        val debugSwitch = Switch(this).apply {
+            isChecked = prefs.getBoolean("debug_notifications_enabled", false)
+            setOnCheckedChangeListener { _, isChecked ->
+                prefs.edit().putBoolean("debug_notifications_enabled", isChecked).apply()
+            }
+        }
+
         val debugButton = Button(this).apply {
-            text = "查看调试信息"
+            text = "查看调试信息（App 内完整版）"
             setOnClickListener {
                 startActivity(Intent(this@MainActivity, DebugActivity::class.java))
             }
@@ -75,6 +91,8 @@ class MainActivity : AppCompatActivity() {
         layout.addView(statusText)
         layout.addView(permissionButton)
         layout.addView(listenerButton)
+        layout.addView(debugSwitchLabel)
+        layout.addView(debugSwitch)
         layout.addView(debugButton)
         setContentView(layout)
     }
