@@ -14,11 +14,11 @@ import android.media.session.MediaSessionManager
 class MediaActionReceiver : BroadcastReceiver() {
 
     companion object {
-        const val ACTION_PLAY = "com.example.mediacontrol.ACTION_PLAY"
-        const val ACTION_PAUSE = "com.example.mediacontrol.ACTION_PAUSE"
-        const val ACTION_SKIP_NEXT = "com.example.mediacontrol.ACTION_SKIP_NEXT"
-        const val ACTION_SKIP_PREV = "com.example.mediacontrol.ACTION_SKIP_PREV"
-        const val ACTION_CUSTOM = "com.example.mediacontrol.ACTION_CUSTOM"
+        const val ACTION_PLAY = "com.dinopig.mediacontrol.ACTION_PLAY"
+        const val ACTION_PAUSE = "com.dinopig.mediacontrol.ACTION_PAUSE"
+        const val ACTION_SKIP_NEXT = "com.dinopig.mediacontrol.ACTION_SKIP_NEXT"
+        const val ACTION_SKIP_PREV = "com.dinopig.mediacontrol.ACTION_SKIP_PREV"
+        const val ACTION_CUSTOM = "com.dinopig.mediacontrol.ACTION_CUSTOM"
         const val EXTRA_CUSTOM_ACTION = "extra_custom_action"
     }
 
