@@ -64,10 +64,18 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        val debugButton = Button(this).apply {
+            text = "查看调试信息"
+            setOnClickListener {
+                startActivity(Intent(this@MainActivity, DebugActivity::class.java))
+            }
+        }
+
         layout.addView(infoText)
         layout.addView(statusText)
         layout.addView(permissionButton)
         layout.addView(listenerButton)
+        layout.addView(debugButton)
         setContentView(layout)
     }
 
