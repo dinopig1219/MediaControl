@@ -1,4 +1,4 @@
-# 媒体控制补丁 (Media Control Patch)
+# 媒体控制通知 (Media Control Notification)
 
 用一条独立的通知，把被 HyperOS 在媒体通知卡片隐藏掉的 Spotify 播放控件（智能随机播放 / 随机播放 / 收藏等）重新显示出来，点击后直接转发给 Spotify 本体。
 
