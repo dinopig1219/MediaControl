@@ -1,1 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+
+    <application
+        android:allowBackup="true"
+        android:label="媒体控制补丁"
+        android:theme="@style/Theme.MediaControlPatch">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!--
+            这是核心：NotificationListenerService。
+            用户需要在 系统设置 -> 通知使用权 里手动给这个 App 授权，
+            授权后本 App 才能读取其它 App(如 Spotify) 的 MediaSession。
+        -->
+        <service
+            android:name=".MediaControlListenerService"
+            android:label="媒体控制补丁"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
+        <receiver
+            android:name=".MediaActionReceiver"
+            android:exported="false" />
+
+    </application>
+</manifest>
