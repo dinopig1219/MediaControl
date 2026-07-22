@@ -36,6 +36,15 @@ jobs:
           APP_VERSION_CODE: ${{ github.run_number }}
         run: gradle assembleDebug assembleRelease
 
+      - name: Rename APKs
+        run: |
+          VERSION_NAME=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts)
+          VERSION_CODE="${{ github.run_number }}"
+          mv "app/build/outputs/apk/debug/app-debug.apk" \
+             "app/build/outputs/apk/debug/MediaControlNotification_${VERSION_NAME}(${VERSION_CODE})-debug.apk"
+          mv "app/build/outputs/apk/release/app-release.apk" \
+             "app/build/outputs/apk/release/MediaControlNotification_${VERSION_NAME}(${VERSION_CODE}).apk"
+
       - uses: actions/upload-artifact@v4
         with:
           name: app-debug-apk
@@ -70,7 +79,6 @@ jobs:
           RAW_MESSAGE="${COMMIT_MESSAGE:-Manual trigger}"
           AUTHOR="${COMMIT_AUTHOR:-${{ github.actor }}}"
 
-          # 代码块里不能再出现反引号，先去掉，避免把 Markdown 格式弄坏
           SAFE_MESSAGE=$(printf '%s' "$RAW_MESSAGE" | tr -d '`')
 
           CAPTION=$(printf 'New push to GitHub\n\x60\x60\x60Branch:\n%s\x60\x60\x60\n\n\x60\x60\x60Commits:\n%s\x60\x60\x60\n\nby %s\n\n[Commit](%s)' \
