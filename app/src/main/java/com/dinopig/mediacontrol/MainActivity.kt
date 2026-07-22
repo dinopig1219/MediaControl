@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -19,14 +20,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
@@ -48,24 +53,38 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+private fun isNotificationPermissionGranted(context: Context): Boolean {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
+    return ContextCompat.checkSelfPermission(
+        context, Manifest.permission.POST_NOTIFICATIONS
+    ) == PackageManager.PERMISSION_GRANTED
+}
+
 @Composable
 private fun MainScreen() {
     val context = LocalContext.current
-    var permissionStatus by remember { mutableStateOf(currentPermissionStatus(context)) }
+    val prefs = remember { context.getSharedPreferences("debug_info", Context.MODE_PRIVATE) }
+
+    var notificationGranted by remember { mutableStateOf(isNotificationPermissionGranted(context)) }
+    var masterEnabled by remember { mutableStateOf(prefs.getBoolean("master_enabled", true)) }
+    var debugNotificationsOn by remember {
+        mutableStateOf(prefs.getBoolean("debug_notifications_enabled", false))
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        permissionStatus = if (granted) {
-            "通知权限：已授予 ✓ 接下来去开通知使用权。"
-        } else {
-            "没有通知权限的话，系统会直接吞掉本 App 生成的通知，请重新授予。"
-        }
-    }
+    ) { granted -> notificationGranted = granted }
 
-    val prefs = remember { context.getSharedPreferences("debug_info", Context.MODE_PRIVATE) }
-    var debugNotificationsOn by remember {
-        mutableStateOf(prefs.getBoolean("debug_notifications_enabled", false))
+    // App 从设置页返回时，重新检查一次权限的真实状态
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                notificationGranted = isNotificationPermissionGranted(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     Scaffold { padding ->
@@ -74,10 +93,20 @@ private fun MainScreen() {
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(20.dp),
+                .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(text = "媒体控制补丁", style = MiuixTheme.textStyles.title1)
+            Text(text = "媒体控制补丁", style = MiuixTheme.textStyles.title3)
+
+            SwitchPreference(
+                title = "服务总开关",
+                summary = if (masterEnabled) "正在运行，Spotify 播放时会生成通知" else "已关闭，不会生成任何通知",
+                checked = masterEnabled,
+                onCheckedChange = { checked ->
+                    masterEnabled = checked
+                    prefs.edit().putBoolean("master_enabled", checked).apply()
+                }
+            )
 
             Card(modifier = Modifier.fillMaxWidth()) {
                 Text(
@@ -88,25 +117,25 @@ private fun MainScreen() {
                 )
             }
 
-            Text(text = permissionStatus)
-
-            TextButton(
-                text = "授予通知权限",
-                onClick = {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        val granted = ContextCompat.checkSelfPermission(
-                            context, Manifest.permission.POST_NOTIFICATIONS
-                        ) == PackageManager.PERMISSION_GRANTED
-                        if (!granted) {
+            SwitchPreference(
+                title = "通知权限",
+                summary = if (notificationGranted) "已授权" else "未授权，点击开启",
+                checked = notificationGranted,
+                onCheckedChange = { checked ->
+                    if (checked) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                             permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                         } else {
-                            permissionStatus = "通知权限已经有了，去开通知使用权吧。"
+                            notificationGranted = true
                         }
                     } else {
-                        permissionStatus = "当前系统版本不需要单独申请通知权限。"
+                        // Android 不允许 App 自己收回已授予的权限，跳到系统设置页让用户手动关闭
+                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                            data = Uri.fromParts("package", context.packageName, null)
+                        }
+                        context.startActivity(intent)
                     }
-                },
-                modifier = Modifier.fillMaxWidth()
+                }
             )
 
             TextButton(
@@ -114,6 +143,8 @@ private fun MainScreen() {
                 onClick = { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) },
                 modifier = Modifier.fillMaxWidth()
             )
+
+            Text(text = "日志", style = MiuixTheme.textStyles.title3)
 
             SwitchPreference(
                 title = "显示调试通知",
@@ -132,14 +163,4 @@ private fun MainScreen() {
             )
         }
     }
-}
-
-private fun currentPermissionStatus(context: Context): String {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-        return "当前系统版本不需要单独申请通知权限。"
-    }
-    val granted = ContextCompat.checkSelfPermission(
-        context, Manifest.permission.POST_NOTIFICATIONS
-    ) == PackageManager.PERMISSION_GRANTED
-    return if (granted) "通知权限：已授予 ✓" else "通知权限：尚未授予 ✗（点下面按钮授予）"
 }
