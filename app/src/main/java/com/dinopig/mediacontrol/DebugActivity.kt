@@ -2,54 +2,81 @@ package com.dinopig.mediacontrol
 
 import android.content.Context
 import android.os.Bundle
-import android.view.Gravity
-import android.widget.Button
-import android.widget.LinearLayout
-import android.widget.ScrollView
-import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.theme.ColorSchemeMode
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.theme.ThemeController
 
-class DebugActivity : AppCompatActivity() {
-
-    private lateinit var contentText: TextView
-
+class DebugActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(32, 64, 32, 32)
+        setContent {
+            val controller = remember { ThemeController(ColorSchemeMode.System) }
+            MiuixTheme(controller = controller) {
+                DebugScreen()
+            }
         }
-
-        val refreshButton = Button(this).apply {
-            text = "刷新"
-            setOnClickListener { loadDebugInfo() }
-        }
-
-        contentText = TextView(this).apply {
-            textSize = 13f
-            setTextIsSelectable(true)
-        }
-
-        val scrollView = ScrollView(this).apply {
-            addView(contentText)
-        }
-
-        root.addView(refreshButton)
-        root.addView(scrollView)
-        setContentView(root)
-
-        loadDebugInfo()
     }
+}
 
-    override fun onResume() {
-        super.onResume()
-        loadDebugInfo()
-    }
+@Composable
+private fun DebugScreen() {
+    val context = LocalContext.current
+    var info by remember { mutableStateOf(loadDebugInfo(context)) }
 
-    private fun loadDebugInfo() {
-        val info = getSharedPreferences("debug_info", Context.MODE_PRIVATE)
-            .getString("last_debug_info", null)
-        contentText.text = info ?: "还没有数据。请先播放 Spotify，确保已授权通知使用权。"
+    Scaffold { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(text = "调试信息", style = MiuixTheme.textStyles.title1)
+
+            TextButton(
+                text = "刷新",
+                onClick = { info = loadDebugInfo(context) },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Card(modifier = Modifier.fillMaxWidth()) {
+                SelectionContainer {
+                    Text(
+                        text = info,
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .verticalScroll(rememberScrollState())
+                    )
+                }
+            }
+        }
     }
+}
+
+private fun loadDebugInfo(context: Context): String {
+    val info = context.getSharedPreferences("debug_info", Context.MODE_PRIVATE)
+        .getString("last_debug_info", null)
+    return info ?: "还没有数据。请先播放 Spotify，确保已授权通知使用权。"
 }
