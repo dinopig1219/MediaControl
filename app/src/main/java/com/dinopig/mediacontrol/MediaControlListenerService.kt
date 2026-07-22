@@ -157,7 +157,7 @@ class MediaControlListenerService : NotificationListenerService() {
     private fun showDebugNotification(state: PlaybackStateCompat) {
         val debugBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle("调试信息（点开看完整）")
+            .setContentTitle("调试信息")
             .setStyle(NotificationCompat.BigTextStyle().bigText(buildDebugText(state)))
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOnlyAlertOnce(true)
@@ -199,7 +199,7 @@ class MediaControlListenerService : NotificationListenerService() {
 
     private fun createChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(CHANNEL_ID, "媒体控制补丁", NotificationManager.IMPORTANCE_LOW)
+            val channel = NotificationChannel(CHANNEL_ID, "媒体控制通知", NotificationManager.IMPORTANCE_LOW)
             getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
         }
     }
