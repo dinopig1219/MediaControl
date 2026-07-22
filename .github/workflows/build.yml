@@ -2,7 +2,7 @@ name: Build APK
 
 on:
   push:
-    branches: [ main, ui-miuix ]
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -18,7 +18,7 @@ jobs:
       - uses: android-actions/setup-android@v3
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: 9.5.1
+          gradle-version: 8.7
 
       - name: Decode keystore
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/release.keystore
@@ -33,7 +33,17 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          APP_VERSION_CODE: ${{ github.run_number }}
         run: gradle assembleDebug assembleRelease
+
+      - name: Rename APKs
+        run: |
+          VERSION_NAME=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts)
+          VERSION_CODE="${{ github.run_number }}"
+          mv "app/build/outputs/apk/debug/app-debug.apk" \
+             "app/build/outputs/apk/debug/MediaControlNotification_${VERSION_NAME}(${VERSION_CODE})-debug.apk"
+          mv "app/build/outputs/apk/release/app-release.apk" \
+             "app/build/outputs/apk/release/MediaControlNotification_${VERSION_NAME}(${VERSION_CODE}).apk"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -69,7 +79,6 @@ jobs:
           RAW_MESSAGE="${COMMIT_MESSAGE:-Manual trigger}"
           AUTHOR="${COMMIT_AUTHOR:-${{ github.actor }}}"
 
-          # 代码块里不能再出现反引号，先去掉，避免把 Markdown 格式弄坏
           SAFE_MESSAGE=$(printf '%s' "$RAW_MESSAGE" | tr -d '`')
 
           CAPTION=$(printf 'New push to GitHub\n\x60\x60\x60Branch:\n%s\x60\x60\x60\n\n\x60\x60\x60Commits:\n%s\x60\x60\x60\n\nby %s\n\n[Commit](%s)' \
