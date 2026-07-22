@@ -1,17 +1,17 @@
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.plugin.compose")
+    id("org.jetbrains.kotlin.android")
 }
 
 android {
     namespace = "com.dinopig.mediacontrol"
-    compileSdk = 37
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "com.dinopig.mediacontrol"
         minSdk = 26
-        targetSdk = 37
-        versionCode = 1
+        targetSdk = 34
+        versionCode = (System.getenv("APP_VERSION_CODE") ?: "1").toInt()
         versionName = "1.0"
     }
 
@@ -32,38 +32,18 @@ android {
         }
     }
 
-    buildFeatures {
-        compose = true
-    }
-
     lint {
         checkReleaseBuilds = false
         abortOnError = false
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
     }
-}
 
-androidComponents {
-    onVariants { variant ->
-        variant.outputs.forEach { output ->
-            output.outputFileName.set(
-                "MediaControlNotification_${android.defaultConfig.versionName}(${android.defaultConfig.versionCode}).apk"
-            )
-        }
-    }
-}
-
-androidComponents {
-    onVariants { variant ->
-        variant.outputs.forEach { output ->
-            output.outputFileName.set(
-                "MediaControlNotification_${android.defaultConfig.versionName}(${android.defaultConfig.versionCode}).apk"
-            )
-        }
+    kotlinOptions {
+        jvmTarget = "1.8"
     }
 }
 
@@ -71,14 +51,4 @@ dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.media:media:1.7.0")
-
-    implementation("androidx.activity:activity-compose:1.9.2")
-    implementation(platform("androidx.compose:compose-bom:2024.09.02"))
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.ui:ui-tooling-preview")
-    implementation("androidx.compose.foundation:foundation")
-    debugImplementation("androidx.compose.ui:ui-tooling")
-
-    implementation("top.yukonga.miuix.kmp:miuix-ui-android:0.9.2")
-    implementation("top.yukonga.miuix.kmp:miuix-preference-android:0.9.2")
 }
