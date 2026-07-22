@@ -81,7 +81,7 @@ jobs:
 
           SAFE_MESSAGE=$(printf '%s' "$RAW_MESSAGE" | tr -d '`')
 
-          CAPTION=$(printf 'New push to GitHub\n\x60\x60\x60Branch:\n%s\x60\x60\x60\n\n\x60\x60\x60Commits:\n%s\x60\x60\x60\n\nby %s\n\n[Commit](%s)' \
+          CAPTION=$(printf 'New push to GitHub\n\x60\x60\x60Branch:\n%s\x60\x60\x60\n\x60\x60\x60Commits:\n%s\x60\x60\x60by %s\n[Commit](%s)' \
             "$BRANCH_NAME" "$SAFE_MESSAGE" "$AUTHOR" "$COMMIT_URL")
 
           curl -F "chat_id=${TELEGRAM_CHAT_ID}" \
