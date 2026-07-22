@@ -7,7 +7,7 @@
 
     <application
         android:allowBackup="true"
-        android:label="媒体控制补丁"
+        android:label="媒体控制通知"
         android:theme="@style/Theme.MediaControlPatch">
 
         <activity
@@ -26,7 +26,7 @@
 
         <service
             android:name=".MediaControlListenerService"
-            android:label="媒体控制补丁"
+            android:label="媒体控制通知"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
             android:exported="true">
             <intent-filter>
