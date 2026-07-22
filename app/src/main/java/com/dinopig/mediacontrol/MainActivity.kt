@@ -115,7 +115,7 @@ private fun MainScreen() {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                text = "媒体控制补丁",
+                text = "媒体控制通知",
                 style = MiuixTheme.textStyles.title1,
                 modifier = Modifier.padding(top = 32.dp, bottom = 4.dp)
             )
