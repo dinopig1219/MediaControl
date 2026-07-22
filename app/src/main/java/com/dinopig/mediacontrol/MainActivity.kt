@@ -62,13 +62,25 @@ private fun isNotificationPermissionGranted(context: Context): Boolean {
     ) == PackageManager.PERMISSION_GRANTED
 }
 
+private fun openAppDetailsSettings(context: Context) {
+    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+        data = Uri.fromParts("package", context.packageName, null)
+    }
+    context.startActivity(intent)
+}
+
 @Composable
 private fun MainScreen() {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("debug_info", Context.MODE_PRIVATE) }
 
     var notificationGranted by remember { mutableStateOf(isNotificationPermissionGranted(context)) }
-    var masterEnabled by remember { mutableStateOf(prefs.getBoolean("master_enabled", true)) }
+    var notificationAskedBefore by remember {
+        mutableStateOf(prefs.getBoolean("notification_permission_asked", false))
+    }
+    var masterEnabled by remember {
+        mutableStateOf(prefs.getBoolean("master_enabled", false) && isNotificationPermissionGranted(context))
+    }
     var debugNotificationsOn by remember {
         mutableStateOf(prefs.getBoolean("debug_notifications_enabled", false))
     }
@@ -77,11 +89,16 @@ private fun MainScreen() {
         ActivityResultContracts.RequestPermission()
     ) { granted -> notificationGranted = granted }
 
+    // 从系统设置页返回时，重新检查权限真实状态；如果权限被收回了，总开关也跟着强制关闭
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 notificationGranted = isNotificationPermissionGranted(context)
+                if (!notificationGranted && masterEnabled) {
+                    masterEnabled = false
+                    prefs.edit().putBoolean("master_enabled", false).apply()
+                }
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -103,15 +120,34 @@ private fun MainScreen() {
                 modifier = Modifier.padding(top = 32.dp, bottom = 4.dp)
             )
 
-            SwitchPreference(
-                title = "服务总开关",
-                summary = if (masterEnabled) "正在运行，Spotify 播放时会生成通知" else "已关闭，不会生成任何通知",
-                checked = masterEnabled,
-                onCheckedChange = { checked ->
-                    masterEnabled = checked
-                    prefs.edit().putBoolean("master_enabled", checked).apply()
-                }
-            )
+            Card(modifier = Modifier.fillMaxWidth()) {
+                SwitchPreference(
+                    title = "服务总开关",
+                    summary = when {
+                        !notificationGranted -> "需要先开启「通知权限」才能启用"
+                        masterEnabled -> "正在运行，Spotify 播放时会生成通知"
+                        else -> "已关闭，不会生成任何通知"
+                    },
+                    checked = masterEnabled,
+                    onCheckedChange = { checked ->
+                        if (checked && !notificationGranted) {
+                            // 权限没开就想开总开关：不允许，顺手引导去开权限
+                            if (!notificationAskedBefore) {
+                                notificationAskedBefore = true
+                                prefs.edit().putBoolean("notification_permission_asked", true).apply()
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                }
+                            } else {
+                                openAppDetailsSettings(context)
+                            }
+                        } else {
+                            masterEnabled = checked
+                            prefs.edit().putBoolean("master_enabled", checked).apply()
+                        }
+                    }
+                )
+            }
 
             Card(modifier = Modifier.fillMaxWidth()) {
                 Text(
@@ -122,49 +158,60 @@ private fun MainScreen() {
                 )
             }
 
-            SwitchPreference(
-                title = "通知权限",
-                summary = if (notificationGranted) "已授权" else "未授权，点击开启",
-                checked = notificationGranted,
-                onCheckedChange = { checked ->
-                    if (checked) {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                        } else {
-                            notificationGranted = true
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column {
+                    SwitchPreference(
+                        title = "通知权限",
+                        summary = if (notificationGranted) "已授权" else "未授权，点击开启",
+                        checked = notificationGranted,
+                        onCheckedChange = {
+                            if (!notificationAskedBefore) {
+                                notificationAskedBefore = true
+                                prefs.edit().putBoolean("notification_permission_asked", true).apply()
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                } else {
+                                    notificationGranted = true
+                                }
+                            } else {
+                                openAppDetailsSettings(context)
+                            }
                         }
-                    } else {
-                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                            data = Uri.fromParts("package", context.packageName, null)
-                        }
-                        context.startActivity(intent)
-                    }
-                }
-            )
+                    )
 
-            TextButton(
-                text = "打开通知使用权设置",
-                onClick = { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) },
-                modifier = Modifier.fillMaxWidth()
-            )
+                    TextButton(
+                        text = "打开通知使用权设置",
+                        onClick = { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    )
+                }
+            }
 
             Text(text = "日志", style = MiuixTheme.textStyles.title3)
 
-            SwitchPreference(
-                title = "显示调试通知",
-                summary = "默认关闭，开启后通知栏会多一条调试信息",
-                checked = debugNotificationsOn,
-                onCheckedChange = { checked ->
-                    debugNotificationsOn = checked
-                    prefs.edit().putBoolean("debug_notifications_enabled", checked).apply()
-                }
-            )
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column {
+                    SwitchPreference(
+                        title = "显示调试通知",
+                        summary = "默认关闭，开启后通知栏会多一条调试信息",
+                        checked = debugNotificationsOn,
+                        onCheckedChange = { checked ->
+                            debugNotificationsOn = checked
+                            prefs.edit().putBoolean("debug_notifications_enabled", checked).apply()
+                        }
+                    )
 
-            TextButton(
-                text = "查看调试信息（App 内完整版）",
-                onClick = { context.startActivity(Intent(context, DebugActivity::class.java)) },
-                modifier = Modifier.fillMaxWidth()
-            )
+                    TextButton(
+                        text = "查看调试信息（App 内完整版）",
+                        onClick = { context.startActivity(Intent(context, DebugActivity::class.java)) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    )
+                }
+            }
         }
     }
 }
