@@ -12,14 +12,13 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.nestedscroll.nestedScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -32,16 +31,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.content.pm.PackageInfoCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import top.yukonga.miuix.kmp.basic.NavigationBar
+import top.yukonga.miuix.kmp.basic.NavigationBarItem
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
+import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.darkColorScheme
@@ -78,51 +82,52 @@ private fun openAppDetailsSettings(context: Context) {
 private fun RootScreen() {
     var selectedTab by remember { mutableIntStateOf(0) }
 
+    val homeScrollBehavior = MiuixScrollBehavior(state = rememberTopAppBarState())
+    val aboutScrollBehavior = MiuixScrollBehavior(state = rememberTopAppBarState())
+
     Scaffold(
+        topBar = {
+            if (selectedTab == 0) {
+                TopAppBar(
+                    title = "媒体控制通知",
+                    scrollBehavior = homeScrollBehavior
+                )
+            } else {
+                TopAppBar(
+                    title = "关于",
+                    scrollBehavior = aboutScrollBehavior
+                )
+            }
+        },
         bottomBar = {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    BottomTabItem(
-                        label = "主页",
-                        selected = selectedTab == 0,
-                        modifier = Modifier.fillMaxWidth(0.5f),
-                        onClick = { selectedTab = 0 }
-                    )
-                    BottomTabItem(
-                        label = "关于",
-                        selected = selectedTab == 1,
-                        modifier = Modifier.fillMaxWidth(1f),
-                        onClick = { selectedTab = 1 }
-                    )
-                }
+            NavigationBar {
+                NavigationBarItem(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    icon = MiuixIcons.VerticalSplit,
+                    label = "主页"
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    icon = MiuixIcons.Info,
+                    label = "关于"
+                )
             }
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            if (selectedTab == 0) HomeScreen() else AboutScreen()
+            if (selectedTab == 0) {
+                HomeScreen(homeScrollBehavior)
+            } else {
+                AboutScreen(aboutScrollBehavior)
+            }
         }
     }
 }
 
 @Composable
-private fun BottomTabItem(
-    label: String,
-    selected: Boolean,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit
-) {
-    Text(
-        text = label,
-        textAlign = TextAlign.Center,
-        color = if (selected) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurfaceVariantSummary,
-        modifier = modifier
-            .clickable(onClick = onClick)
-            .padding(vertical = 14.dp)
-    )
-}
-
-@Composable
-private fun HomeScreen() {
+private fun HomeScreen(scrollBehavior: MiuixScrollBehavior) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("debug_info", Context.MODE_PRIVATE) }
 
@@ -159,16 +164,11 @@ private fun HomeScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .nestedScroll(scrollBehavior.nestedScrollConnection)
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(
-            text = "媒体控制通知",
-            style = MiuixTheme.textStyles.title1,
-            modifier = Modifier.padding(top = 32.dp, bottom = 4.dp)
-        )
-
         Card(modifier = Modifier.fillMaxWidth()) {
             SwitchPreference(
                 title = "服务总开关",
@@ -230,9 +230,7 @@ private fun HomeScreen() {
                 TextButton(
                     text = "打开通知使用权设置",
                     onClick = { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
+                    modifier = Modifier.fillMaxWidth().padding(16.dp)
                 )
             }
         }
@@ -254,9 +252,7 @@ private fun HomeScreen() {
                 TextButton(
                     text = "查看调试信息（App 内完整版）",
                     onClick = { context.startActivity(Intent(context, DebugActivity::class.java)) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
+                    modifier = Modifier.fillMaxWidth().padding(16.dp)
                 )
             }
         }
@@ -264,7 +260,7 @@ private fun HomeScreen() {
 }
 
 @Composable
-private fun AboutScreen() {
+private fun AboutScreen(scrollBehavior: MiuixScrollBehavior) {
     val context = LocalContext.current
     val packageInfo = remember {
         context.packageManager.getPackageInfo(context.packageName, 0)
@@ -275,16 +271,11 @@ private fun AboutScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .nestedScroll(scrollBehavior.nestedScrollConnection)
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(
-            text = "关于",
-            style = MiuixTheme.textStyles.title1,
-            modifier = Modifier.padding(top = 32.dp, bottom = 4.dp)
-        )
-
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(text = "媒体控制通知", style = MiuixTheme.textStyles.title3)
@@ -297,15 +288,11 @@ private fun AboutScreen() {
             TextButton(
                 text = "查看 GitHub 仓库",
                 onClick = {
-                    val intent = Intent(
-                        Intent.ACTION_VIEW,
-                        Uri.parse("https://github.com/dinopig1219/MediaControlNotification")
+                    context.startActivity(
+                        Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/dinopig1219/MediaControlNotification"))
                     )
-                    context.startActivity(intent)
                 },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
+                modifier = Modifier.fillMaxWidth().padding(16.dp)
             )
         }
     }
