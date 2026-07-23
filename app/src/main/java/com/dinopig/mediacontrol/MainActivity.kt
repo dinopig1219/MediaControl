@@ -15,9 +15,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -26,11 +29,12 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
@@ -38,17 +42,20 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.pm.PackageInfoCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.NavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationBarItem
 import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.darkColorScheme
 import top.yukonga.miuix.kmp.theme.lightColorScheme
-import top.yukonga.miuix.kmp.preference.SwitchPreference
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -79,37 +86,48 @@ private fun openAppDetailsSettings(context: Context) {
 
 @Composable
 private fun RootScreen() {
-    var selectedTab by remember { mutableIntStateOf(0) }
+    val pagerState = rememberPagerState(pageCount = { 2 })
+    val coroutineScope = rememberCoroutineScope()
+
+    val homeScrollBehavior = MiuixScrollBehavior()
+    val aboutScrollBehavior = MiuixScrollBehavior()
 
     Scaffold(
         topBar = {
-            TopAppBar(title = if (selectedTab == 0) "媒体控制通知" else "关于")
+            if (pagerState.currentPage == 0) {
+                TopAppBar(title = "媒体控制通知", scrollBehavior = homeScrollBehavior)
+            } else {
+                TopAppBar(title = "关于", scrollBehavior = aboutScrollBehavior)
+            }
         },
         bottomBar = {
             NavigationBar {
                 NavigationBarItem(
-                    selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 },
+                    selected = pagerState.currentPage == 0,
+                    onClick = { coroutineScope.launch { pagerState.animateScrollToPage(0) } },
                     icon = Icons.Default.Home,
                     label = "主页"
                 )
                 NavigationBarItem(
-                    selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
+                    selected = pagerState.currentPage == 1,
+                    onClick = { coroutineScope.launch { pagerState.animateScrollToPage(1) } },
                     icon = Icons.Default.Info,
                     label = "关于"
                 )
             }
         }
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            if (selectedTab == 0) HomeScreen() else AboutScreen()
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize().padding(padding)
+        ) { page ->
+            if (page == 0) HomeScreen(homeScrollBehavior) else AboutScreen(aboutScrollBehavior)
         }
     }
 }
 
 @Composable
-private fun HomeScreen() {
+private fun HomeScreen(scrollBehavior: MiuixScrollBehavior) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("debug_info", Context.MODE_PRIVATE) }
 
@@ -146,10 +164,12 @@ private fun HomeScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .nestedScroll(scrollBehavior.nestedScrollConnection)
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
+        SmallTitle(text = "开关", insideMargin = PaddingValues(horizontal = 4.dp, vertical = 8.dp))
         Card(modifier = Modifier.fillMaxWidth()) {
             SwitchPreference(
                 title = "服务总开关",
@@ -178,7 +198,7 @@ private fun HomeScreen() {
             )
         }
 
-        Card(modifier = Modifier.fillMaxWidth()) {
+        Card(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
             Text(
                 text = "第 1 步：授予「通知权限」\n\n第 2 步：授予「通知使用权」\n\n" +
                     "授权后，本 App 会读取 Spotify 当前的播放状态，并在通知栏里重新生成一条带完整按钮的通知。\n\n" +
@@ -187,6 +207,7 @@ private fun HomeScreen() {
             )
         }
 
+        SmallTitle(text = "通知", insideMargin = PaddingValues(horizontal = 4.dp, vertical = 8.dp))
         Card(modifier = Modifier.fillMaxWidth()) {
             Column {
                 SwitchPreference(
@@ -216,8 +237,7 @@ private fun HomeScreen() {
             }
         }
 
-        Text(text = "日志", style = MiuixTheme.textStyles.title3)
-
+        SmallTitle(text = "日志", insideMargin = PaddingValues(horizontal = 4.dp, vertical = 8.dp))
         Card(modifier = Modifier.fillMaxWidth()) {
             Column {
                 SwitchPreference(
@@ -241,7 +261,7 @@ private fun HomeScreen() {
 }
 
 @Composable
-private fun AboutScreen() {
+private fun AboutScreen(scrollBehavior: MiuixScrollBehavior) {
     val context = LocalContext.current
     val packageInfo = remember {
         context.packageManager.getPackageInfo(context.packageName, 0)
@@ -252,11 +272,12 @@ private fun AboutScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .nestedScroll(scrollBehavior.nestedScrollConnection)
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Card(modifier = Modifier.fillMaxWidth()) {
+        Card(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(text = "媒体控制通知", style = MiuixTheme.textStyles.title3)
                 Text(text = "版本 $versionName ($versionCode)")
