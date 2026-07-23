@@ -251,7 +251,7 @@ private fun HomeScreen(scrollBehavior: MiuixScrollBehavior) {
                 )
 
                 TextButton(
-                    text = "查看调试信息（App 内完整版）",
+                    text = "查看调试信息",
                     onClick = { context.startActivity(Intent(context, DebugActivity::class.java)) },
                     modifier = Modifier.fillMaxWidth().padding(16.dp)
                 )
