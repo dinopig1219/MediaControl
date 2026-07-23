@@ -28,6 +28,9 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         run: keytool -list -keystore app/release.keystore -storepass "$KEYSTORE_PASSWORD"
 
+      - name: Diagnose resolved Miuix version
+        run: gradle :app:dependencies --configuration debugRuntimeClasspath | grep -i miuix
+
       - name: Build debug + release APK
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
