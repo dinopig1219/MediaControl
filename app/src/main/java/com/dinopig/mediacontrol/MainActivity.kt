@@ -159,12 +159,11 @@ private fun HomeScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp),
+            .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        SmallTitle(text = "开关", insideMargin = PaddingValues(horizontal = 4.dp, vertical = 8.dp))
-        Card(modifier = Modifier.fillMaxWidth()) {
+        SmallTitle(text = "开关")
+        Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
             SwitchPreference(
                 title = "服务总开关",
                 summary = when {
@@ -201,8 +200,8 @@ private fun HomeScreen() {
             )
         }
 
-        SmallTitle(text = "通知", insideMargin = PaddingValues(horizontal = 4.dp, vertical = 8.dp))
-        Card(modifier = Modifier.fillMaxWidth()) {
+        SmallTitle(text = "通知")
+        Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
             Column {
                 SwitchPreference(
                     title = "通知权限",
@@ -231,8 +230,8 @@ private fun HomeScreen() {
             }
         }
 
-        SmallTitle(text = "日志", insideMargin = PaddingValues(horizontal = 4.dp, vertical = 8.dp))
-        Card(modifier = Modifier.fillMaxWidth()) {
+        SmallTitle(text = "日志")
+        Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
             Column {
                 SwitchPreference(
                     title = "显示调试通知",
@@ -278,7 +277,7 @@ private fun AboutScreen() {
             }
         }
 
-        Card(modifier = Modifier.fillMaxWidth()) {
+        Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
             TextButton(
                 text = "查看 GitHub 仓库",
                 onClick = {
